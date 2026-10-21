@@ -97,7 +97,7 @@ main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px
     if (!window.google || !google.accounts || !google.accounts.oauth2) { status('Google認証ライブラリを読み込み中です。数秒後にもう一度試してください。','err'); return; }
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments',
+      scope: 'https://www.googleapis.com/auth/script.projects',
       callback: response => {
         if (response.error) { status('認証エラー: ' + response.error, 'err'); return; }
         accessToken = response.access_token || '';
