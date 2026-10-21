@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b10">
+<title>GAS Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#11151e;--panel2:#171d28;--line:#293244;--text:#edf2fa;--muted:#9aa8bd;--accent:#9cf4d2;--danger:#ff8d9a;--blue:#9abfff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#15202c 0,var(--bg) 55%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+header{padding:22px 18px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#090b10ed;backdrop-filter:blur(18px);z-index:3}
+.head{max-width:1200px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-weight:800;font-size:20px;letter-spacing:.04em}.brand span{color:var(--accent)}.sub{font-size:12px;color:var(--muted)}
+main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px}.panel{background:linear-gradient(145deg,#121722,#0f131b);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}.panel h2{font-size:15px;margin:0 0 12px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{flex:1;min-width:220px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}input,select,textarea{font:inherit;color:var(--text);background:#080b11;border:1px solid #344056;border-radius:10px;padding:11px;width:100%;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--accent)}button{font:inherit;font-weight:700;color:#08130f;background:var(--accent);border:0;border-radius:10px;padding:11px 14px;min-height:43px;cursor:pointer}button.secondary{color:var(--text);background:var(--panel2);border:1px solid var(--line)}button.warn{color:#2b090d;background:var(--danger)}button:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:10px;color:var(--muted);font-size:13px;white-space:pre-wrap}.status.ok{color:var(--accent)}.status.err{color:var(--danger)}.work{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:14px}.files{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto}.file{display:block;text-align:left;color:var(--text);background:transparent;border:1px solid transparent;font-weight:500;padding:10px;width:100%;overflow-wrap:anywhere}.file.active{background:#202b3b;border-color:#3b4d67}.editor-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.editor-head strong{overflow-wrap:anywhere}textarea#source{min-height:48vh;resize:vertical;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;white-space:pre;overflow:auto}.notice{border-left:3px solid var(--blue);padding:10px 12px;background:#111c2b;color:#c7d7ef;border-radius:5px;font-size:13px;margin-top:12px}.hidden{display:none!important}.actions{display:flex;gap:8px;flex-wrap:wrap}.small{font-size:12px;color:var(--muted)}.pill{border:1px solid var(--line);border-radius:999px;padding:4px 9px;color:var(--muted);font-size:11px}
+@media(max-width:700px){header{padding:16px 14px}.work{grid-template-columns:1fr}.files{max-height:220px}.file{padding:8px 10px}textarea#source{min-height:45vh}.panel{padding:13px}.field{min-width:100%}.head{align-items:flex-start}}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<header><div class="head"><div><div class="brand">GAS <span>STUDIO</span></div><div class="sub">Browser-based Apps Script project editor</div></div><span class="pill" id="authPill">未認証</span></div></header>
+<main>
+<section class="panel">
+<h2>01 / 接続設定</h2>
+<div class="row">
+<div class="field"><label for="clientId">Google OAuth クライアントID（Webアプリ）</label><input id="clientId" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="field"><label for="scriptId">Apps Script プロジェクトID</label><input id="scriptId" placeholder="GASプロジェクトのスクリプトID" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="authBtn">Google認証</button><button class="secondary" id="loadBtn" disabled>プロジェクトを読み込む</button><button class="secondary" id="logoutBtn">認証をクリア</button></div>
+<div id="status" class="status">まずGoogle CloudでApps Script APIを有効化し、OAuthクライアントIDを設定してください。</div>
+<div class="notice">この画面はGitHub Pages上の静的ページです。OAuthクライアントIDは入力欄に入力するだけで、リポジトリには保存しません。アクセストークンはこのページのメモリ内だけに保持し、localStorageには保存しません。</div>
+</section>
+<section class="panel">
+<h2>02 / 編集</h2>
+<div class="work">
+<aside><div class="small" style="margin-bottom:8px">プロジェクトファイル</div><div id="files" class="files"><div class="small">プロジェクト未読込</div></div></aside>
+<div>
+<div class="editor-head"><strong id="fileTitle">ファイルを選択してください</strong><span id="dirty" class="pill">未変更</span></div>
+<textarea id="source" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="読み込んだファイルのコードがここに表示されます。" disabled></textarea>
+<div class="actions" style="margin-top:10px"><button class="secondary" id="backupBtn" disabled>バックアップを保存</button><button class="secondary" id="discardBtn" disabled>変更を破棄</button><button id="saveBtn" disabled>GASへ保存</button></div>
+<div class="small" style="margin-top:8px">保存前に、プロジェクト全体のバックアップをダウンロードしてください。保存はプロジェクト内のファイル一式を更新します。</div>
+</div>
+</div>
+<div class="notice">注意：コードの保存とウェブアプリのデプロイ更新は別操作です。まずは既存プロジェクトの読み込み・バックアップ確認を行い、保存ボタンを押す前に内容を必ず確認してください。</div>
+</section>
+<section class="panel">
+<h2>03 / 安全確認</h2>
+<div class="small">• このサイトはGoogleのOAuthアクセストークンをサーバーに送信しません。<br>• GitHub Pagesは公開サイトです。秘密鍵・パスワード・OAuthクライアントシークレットをコードに追加しないでください。<br>• APIへのアクセスは、Google認証したアカウントの権限に従います。<br>• GASのソース更新はプロジェクト内の全ファイルを置き換えるため、別のタブで同じプロジェクトを編集しないでください。</div>
+</section>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const API = 'https://script.googleapis.com/v1/projects/';
+  let accessToken = '';
+  let tokenClient = null;
+  let projectFiles = [];
+  let originalFiles = [];
+  let activeIndex = -1;
+  let dirty = false;
+  const status = (message, kind='') => { $('status').textContent = message; $('status').className = 'status ' + kind; };
+  const setAuth = on => { $('authPill').textContent = on ? '認証済み' : '未認証'; $('loadBtn').disabled = !on; };
+  const currentFile = () => activeIndex >= 0 ? projectFiles[activeIndex] : null;
+  const changed = () => {
+    const file = currentFile();
+    if (file) file.source = $('source').value;
+    dirty = JSON.stringify(projectFiles) !== JSON.stringify(originalFiles);
+    $('dirty').textContent = dirty ? '未保存の変更あり' : '未変更';
+    $('dirty').style.color = dirty ? '#ffd38c' : '';
+    $('saveBtn').disabled = !accessToken || !dirty;
+    $('discardBtn').disabled = !dirty;
+    $('backupBtn').disabled = !projectFiles.length;
+  };
+  const renderFiles = () => {
+    const list = $('files'); list.replaceChildren();
+    if (!projectFiles.length) { list.textContent = 'ファイルがありません'; return; }
+    projectFiles.forEach((file, index) => {
+      const button = document.createElement('button');
+      button.className = 'file' + (index === activeIndex ? ' active' : '');
+      button.textContent = file.name + ' · ' + file.type;
+      button.onclick = () => {
+        if (dirty && !confirm('未保存の変更があります。別ファイルに切り替えますか？')) return;
+        activeIndex = index; $('fileTitle').textContent = file.name + ' (' + file.type + ')';
+        $('source').value = file.source || ''; $('source').disabled = false;
+        renderFiles(); changed();
+      };
+      list.appendChild(button);
+    });
+  };
+  const downloadJSON = (obj, name) => {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  $('authBtn').onclick = () => {
+    const clientId = $('clientId').value.trim();
+    if (!clientId || !clientId.endsWith('.apps.googleusercontent.com')) { status('Google OAuthクライアントIDを入力してください。','err'); return; }
+    if (!window.google || !google.accounts || !google.accounts.oauth2) { status('Google認証ライブラリを読み込み中です。数秒後にもう一度試してください。','err'); return; }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments',
+      callback: response => {
+        if (response.error) { status('認証エラー: ' + response.error, 'err'); return; }
+        accessToken = response.access_token || '';
+        setAuth(Boolean(accessToken));
+        status('Google認証に成功しました。次にApps ScriptプロジェクトIDを入力して読み込んでください。','ok');
+      },
+      error_callback: error => status('認証画面を開けませんでした: ' + (error.message || error.type || 'unknown'), 'err')
+    });
+    tokenClient.requestAccessToken({prompt:'consent'});
+  };
+  $('logoutBtn').onclick = () => {
+    if (accessToken && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(accessToken, () => {});
+    accessToken = ''; tokenClient = null; setAuth(false); status('このページの認証状態をクリアしました。');
+  };
+  async function api(path, options={}) {
+    const response = await fetch(API + encodeURIComponent($('scriptId').value.trim()) + path, {
+      ...options, headers: {'Authorization':'Bearer ' + accessToken, 'Content-Type':'application/json', ...(options.headers||{})}
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error?.message || ('HTTP ' + response.status));
+    return body;
+  }
+  $('loadBtn').onclick = async () => {
+    if (dirty && !confirm('未保存の変更があります。破棄して読み込み直しますか？')) return;
+    const id = $('scriptId').value.trim();
+    if (!id) { status('Apps ScriptのプロジェクトIDを入力してください。','err'); return; }
+    $('loadBtn').disabled = true; status('プロジェクトを読み込んでいます…');
+    try {
+      const data = await api('/content');
+      projectFiles = (data.files || []).map(f => ({name:f.name,type:f.type,source:f.source || '', ...(f.id ? {id:f.id}:{}), ...(f.dependencies ? {dependencies:f.dependencies}:{}), ...(f.executionApi ? {executionApi:f.executionApi}:{}), ...(f.webapp ? {webapp:f.webapp}:{})}));
+      originalFiles = JSON.parse(JSON.stringify(projectFiles));
+      activeIndex = projectFiles.length ? 0 : -1; dirty = false;
+      renderFiles();
+      if (activeIndex >= 0) {
+        $('fileTitle').textContent = projectFiles[0].name + ' (' + projectFiles[0].type + ')';
+        $('source').value = projectFiles[0].source; $('source').disabled = false;
+      } else { $('fileTitle').textContent = 'ファイルなし'; $('source').value=''; $('source').disabled=true; }
+      changed(); status('読み込み成功：' + projectFiles.length + ' ファイル。内容を確認し、保存前にバックアップを作成してください。','ok');
+    } catch (error) { status('読み込みに失敗しました: ' + error.message + '\nプロジェクトID、APIの有効化、OAuthスコープ、アカウントの編集権限を確認してください。','err'); }
+    finally { $('loadBtn').disabled = !accessToken; }
+  };
+  $('source').addEventListener('input', changed);
+  $('backupBtn').onclick = () => {
+    if (!projectFiles.length) return;
+    downloadJSON({exportedAt:new Date().toISOString(),scriptId:$('scriptId').value.trim(),files:projectFiles}, 'gas-backup-' + new Date().toISOString().replace(/[:.]/g,'-') + '.json');
+    status('現在の編集内容をバックアップとしてダウンロードしました。','ok');
+  };
+  $('discardBtn').onclick = () => {
+    if (!confirm('すべての未保存変更を破棄しますか？')) return;
+    projectFiles = JSON.parse(JSON.stringify(originalFiles)); dirty = false;
+    if (activeIndex >= 0) $('source').value = projectFiles[activeIndex].source || '';
+    renderFiles(); changed(); status('未保存の変更を破棄しました。');
+  };
+  $('saveBtn').onclick = async () => {
+    if (!projectFiles.length || !dirty) return;
+    if (!confirm('GASプロジェクト内の全ファイルを、現在の編集内容で置き換えます。先にバックアップをダウンロードしましたか？')) return;
+    downloadJSON({exportedAt:new Date().toISOString(),scriptId:$('scriptId').value.trim(),files:originalFiles}, 'gas-before-save-' + new Date().toISOString().replace(/[:.]/g,'-') + '.json');
+    $('saveBtn').disabled = true; status('GASへ保存しています…');
+    try {
+      await api('/content', {method:'PUT', body:JSON.stringify({files:projectFiles})});
+      originalFiles = JSON.parse(JSON.stringify(projectFiles)); dirty = false; changed();
+      status('GASのソースコードを更新しました。既存のデプロイは自動更新されない場合があります。公開ウェブアプリへの反映が必要なら、GASのデプロイ管理で新しいバージョンを反映してください。','ok');
+    } catch (error) { status('保存に失敗しました: ' + error.message + '\nプロジェクト全体は更新されていない可能性があります。読み込み直して状態を確認してください。','err'); }
+    finally { changed(); }
+  };
+  setAuth(false);
+})();
+</script>
+</body>
+</html>
