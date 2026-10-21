@@ -101,7 +101,7 @@ main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px
     const input = value.trim();
     if (!input) throw new Error('GASの編集画面URLまたはスクリプトIDを入力してください。');
     // Accept a raw script ID, or the official Apps Script editor URL.
-    if (!/^https?:\\/\\//i.test(input)) {
+    if (!/^https?:\/\//i.test(input)) {
       if (/[/?#]/.test(input)) throw new Error('URL形式を確認してください。');
       return input;
     }
@@ -110,9 +110,9 @@ main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px
     if (url.hostname !== 'script.google.com' && url.hostname !== 'script.googleusercontent.com') {
       throw new Error('script.google.com のGAS編集画面URLを入力してください。');
     }
-    const match = url.pathname.match(/\\/projects\\/([^/]+)\\/edit(?:\\/|$)/);
+    const match = url.pathname.match(/\/projects\/([^/]+)\/edit(?:\/|$)/);
     if (match) return decodeURIComponent(match[1]);
-    if (/\\/macros\\/s\\/[^/]+\\/exec/.test(url.pathname) || /\\/macros\\/s\\/[^/]+\\/dev/.test(url.pathname)) {
+    if (/\/macros\/s\/[^/]+\/exec/.test(url.pathname) || /\/macros\/s\/[^/]+\/dev/.test(url.pathname)) {
       throw new Error('これはウェブアプリのURLです。公開URLから元のスクリプトIDは判定できません。GASの「プロジェクトの設定」または編集画面URLを使ってください。');
     }
     throw new Error('GASの編集画面URLからプロジェクトIDを見つけられませんでした。編集画面のURL（/projects/…/edit）を貼り付けてください。');
