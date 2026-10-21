@@ -22,7 +22,13 @@ main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px
 <h2>01 / 接続設定</h2>
 <div class="row">
 <div class="field"><label for="clientId">Google OAuth クライアントID（Webアプリ）</label><input id="clientId" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-<div class="field"><label for="scriptId">Apps Script プロジェクトID</label><input id="scriptId" placeholder="GASプロジェクトのスクリプトID" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+</div>
+<div class="row" style="margin-top:10px">
+<div class="field"><label for="scriptUrl">GASプロジェクトURL または スクリプトID</label><input id="scriptUrl" placeholder="https://script.google.com/home/projects/…/edit" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<button class="secondary" id="parseUrlBtn">URLからIDを取得</button>
+</div>
+<div class="row" style="margin-top:10px">
+<div class="field"><label for="scriptId">判定したApps Script プロジェクトID</label><input id="scriptId" placeholder="URLから自動入力、またはIDを直接入力" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
 </div>
 <div class="row" style="margin-top:10px"><button id="authBtn">Google認証</button><button class="secondary" id="loadBtn" disabled>プロジェクトを読み込む</button><button class="secondary" id="logoutBtn">認証をクリア</button></div>
 <div id="status" class="status">まずGoogle CloudでApps Script APIを有効化し、OAuthクライアントIDを設定してください。</div>
@@ -91,6 +97,38 @@ main{max-width:1200px;margin:20px auto;padding:0 14px 50px;display:grid;gap:14px
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  function extractScriptId(value) {
+    const input = value.trim();
+    if (!input) throw new Error('GASの編集画面URLまたはスクリプトIDを入力してください。');
+    // Accept a raw script ID, or the official Apps Script editor URL.
+    if (!/^https?:\\/\\//i.test(input)) {
+      if (/[/?#]/.test(input)) throw new Error('URL形式を確認してください。');
+      return input;
+    }
+    let url;
+    try { url = new URL(input); } catch (_) { throw new Error('URLを読み取れませんでした。'); }
+    if (url.hostname !== 'script.google.com' && url.hostname !== 'script.googleusercontent.com') {
+      throw new Error('script.google.com のGAS編集画面URLを入力してください。');
+    }
+    const match = url.pathname.match(/\\/projects\\/([^/]+)\\/edit(?:\\/|$)/);
+    if (match) return decodeURIComponent(match[1]);
+    if (/\\/macros\\/s\\/[^/]+\\/exec/.test(url.pathname) || /\\/macros\\/s\\/[^/]+\\/dev/.test(url.pathname)) {
+      throw new Error('これはウェブアプリのURLです。公開URLから元のスクリプトIDは判定できません。GASの「プロジェクトの設定」または編集画面URLを使ってください。');
+    }
+    throw new Error('GASの編集画面URLからプロジェクトIDを見つけられませんでした。編集画面のURL（/projects/…/edit）を貼り付けてください。');
+  }
+  $('parseUrlBtn').onclick = () => {
+    try {
+      const id = extractScriptId($('scriptUrl').value);
+      $('scriptId').value = id;
+      status('プロジェクトIDを取得しました。Google認証後に「プロジェクトを読み込む」を押してください。','ok');
+    } catch (error) {
+      status(error.message,'err');
+    }
+  };
+  $('scriptUrl').addEventListener('keydown', event => {
+    if (event.key === 'Enter') $('parseUrlBtn').click();
+  });
   $('authBtn').onclick = () => {
     const clientId = $('clientId').value.trim();
     if (!clientId || !clientId.endsWith('.apps.googleusercontent.com')) { status('Google OAuthクライアントIDを入力してください。','err'); return; }
